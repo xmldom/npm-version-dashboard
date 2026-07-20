@@ -213,11 +213,20 @@
     font-weight: 780;
     letter-spacing: -0.045em;
   }
-  .positive {
+  .positive,
+  .healthy {
     color: var(--good);
   }
-  .negative {
+  .negative,
+  .mismatch {
     color: var(--bad);
+  }
+  .delayed {
+    color: var(--accent-soft);
+  }
+  .health-metric {
+    font-size: clamp(1.25rem, 3vw, 2rem) !important;
+    text-transform: capitalize;
   }
 
   .panel {
@@ -256,6 +265,9 @@
     inline-size: 100%;
     min-inline-size: 34rem;
     block-size: auto;
+  }
+  .history-chart {
+    min-block-size: 14rem;
   }
   figcaption {
     margin-block-start: 0.75rem;

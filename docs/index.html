@@ -66,7 +66,33 @@
             <dt>Downloaded versions</dt>
             <dd id="metric-versions">—</dd>
           </div>
+          <div>
+            <dt>Latest daily total</dt>
+            <dd id="metric-daily">—</dd>
+          </div>
+          <div>
+            <dt>Share of npm traffic</dt>
+            <dd id="metric-npm-share">—</dd>
+          </div>
+          <div>
+            <dt>Data quality</dt>
+            <dd id="metric-health" class="health-metric">—</dd>
+          </div>
         </dl>
+
+        <section class="panel chart-panel" aria-labelledby="history-title">
+          <div class="panel-heading">
+            <div>
+              <h3 id="history-title">Daily package downloads</h3>
+              <p>Exact npm-reported package totals, backfilled independently of the version snapshots.</p>
+            </div>
+            <span id="history-range" class="date-chip"></span>
+          </div>
+          <figure>
+            <div id="history-chart" class="chart history-chart" aria-hidden="true"></div>
+            <figcaption id="history-caption"></figcaption>
+          </figure>
+        </section>
 
         <section class="panel chart-panel" aria-labelledby="chart-title">
           <div class="panel-heading">
@@ -110,6 +136,7 @@
                   <th scope="col">Top version</th>
                   <th scope="col">Latest share</th>
                   <th scope="col">Change</th>
+                  <th scope="col">Data status</th>
                 </tr>
               </thead>
               <tbody id="snapshot-rows"></tbody>

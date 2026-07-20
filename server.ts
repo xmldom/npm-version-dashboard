@@ -3,13 +3,14 @@ import config from "./config/packages.json" with { type: "json" };
 import { collectAll } from "./deno/collector.ts";
 import {
   ensurePackages,
+  listDailyDownloads,
   listManifests,
   listPackages,
   loadVersions,
   type PackageConfig,
 } from "./deno/store.ts";
 
-const kv = await Deno.openKv();
+const kv = await Deno.openKv(Deno.env.get("DENO_KV_PATH"));
 await ensurePackages(kv, config.packages as PackageConfig[]);
 
 Deno.cron(
@@ -44,7 +45,10 @@ function json(value: unknown, init: ResponseInit = {}): Response {
 async function dashboardResponse(): Promise<Response> {
   const packages = await listPackages(kv);
   const dashboardPackages = await Promise.all(packages.map(async (item) => {
-    const manifests = await listManifests(kv, item.name);
+    const [manifests, dailyTotals] = await Promise.all([
+      listManifests(kv, item.name),
+      listDailyDownloads(kv, "daily", item.name),
+    ]);
     const snapshots = await Promise.all(manifests.map(async (manifest) => {
       const downloadsByVersion = await loadVersions(kv, manifest);
       const latestRelease = manifest.latestVersion
@@ -56,7 +60,16 @@ async function dashboardResponse(): Promise<Response> {
         status: "ok",
         total: manifest.total,
         versionTotal: manifest.versionTotal,
-        totalsMatch: manifest.totalsMatch,
+        rangeTotal: manifest.rangeTotal ?? null,
+        integrity: manifest.integrity ?? {
+          versionsMatchPoint: (manifest as unknown as { totalsMatch?: boolean }).totalsMatch ?? false,
+          rangeMatchesPoint: null,
+          windowsAlign: null,
+        },
+        freshness: manifest.freshness ?? null,
+        healthStatus: manifest.healthStatus ?? "legacy",
+        historyStatus: manifest.historyStatus ?? "partial",
+        sourceLastModified: manifest.sourceLastModified ?? null,
         lastDay: manifest.lastDay,
         downloadsByVersion,
         latestVersion: manifest.latestVersion,
@@ -65,16 +78,22 @@ async function dashboardResponse(): Promise<Response> {
           : {},
       };
     }));
-    return { ...item, snapshots };
+    return { ...item, snapshots, dailyTotals };
   }));
+  const [globalDaily, globalStatus] = await Promise.all([
+    listDailyDownloads(kv, "global-daily", null),
+    kv.get(["global-status"]),
+  ]);
 
   return json({
-    schemaVersion: 2,
+    schemaVersion: 3,
     generatedAt: new Date().toISOString(),
     collectionSchedule: "Daily at 04:17 UTC",
+    globalBaseline: { dailyTotals: globalDaily, status: globalStatus.value },
     caveats: [
       "npm reports version downloads only for the latest seven-day window; retained history begins with this service.",
       "Daily version values are rolling-window observations, not exact per-version daily downloads.",
+      "Each snapshot reconciles version, point, and range totals; delayed or mismatched source data remains visible.",
       "Downloads exclude installs served only by private registries, mirrors, and offline caches.",
     ],
     packages: dashboardPackages,
@@ -97,8 +116,16 @@ async function handleAdminCollect(request: Request): Promise<Response> {
 Deno.serve(async (request) => {
   const url = new URL(request.url);
   if (url.pathname === "/healthz") {
-    const lastRun = await kv.get(["status", "last-run"]);
-    return json({ ok: true, packages: (await listPackages(kv)).length, lastRun: lastRun.value });
+    const [lastRun, globalStatus] = await Promise.all([
+      kv.get(["status", "last-run"]),
+      kv.get(["global-status"]),
+    ]);
+    return json({
+      ok: true,
+      packages: (await listPackages(kv)).length,
+      lastRun: lastRun.value,
+      globalStatus: globalStatus.value,
+    });
   }
   if (url.pathname === "/api/dashboard" && request.method === "GET") return await dashboardResponse();
   if (url.pathname === "/api/admin/collect" && request.method === "POST") {

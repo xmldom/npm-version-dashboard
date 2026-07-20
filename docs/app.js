@@ -10,6 +10,12 @@ const elements = Object.fromEntries([
   "metric-growth",
   "metric-latest",
   "metric-versions",
+  "metric-daily",
+  "metric-npm-share",
+  "metric-health",
+  "history-chart",
+  "history-caption",
+  "history-range",
   "latest-date",
   "release-note",
   "chart",
@@ -21,6 +27,7 @@ const elements = Object.fromEntries([
 
 const number = new Intl.NumberFormat("en-GB");
 const percent = new Intl.NumberFormat("en-GB", { style: "percent", maximumFractionDigits: 1 });
+const smallPercent = new Intl.NumberFormat("en-GB", { style: "percent", maximumFractionDigits: 6 });
 const date = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "UTC" });
 const palette = ["#ff5a5f", "#ff9f43", "#ffd166", "#68d391", "#5cc8ff", "#a78bfa", "#f472b6", "#7f8aa3"];
 let data;
@@ -58,6 +65,100 @@ function versionRows(snapshot, versions) {
   const other = Math.max(0, snapshot.total - shown);
   if (other > 0) rows.push({ version: "Other", downloads: other });
   return rows;
+}
+
+function movingAverage(points, windowSize = 28) {
+  return points.map((point, index) => {
+    const window = points.slice(Math.max(0, index - windowSize + 1), index + 1);
+    return { ...point, average: window.reduce((sum, item) => sum + item.downloads, 0) / window.length };
+  });
+}
+
+function renderHistory(points) {
+  clear(elements["history-chart"]);
+  const recent = movingAverage((points ?? []).slice(-730));
+  if (!recent.length) {
+    setText(elements["history-caption"], "Historical package totals will appear after the first backfill.");
+    setText(elements["history-range"], "Backfill pending");
+    return;
+  }
+
+  const width = 900;
+  const height = 280;
+  const margin = { top: 18, right: 20, bottom: 46, left: 70 };
+  const plotWidth = width - margin.left - margin.right;
+  const plotHeight = height - margin.top - margin.bottom;
+  const max = Math.max(...recent.map((point) => Math.max(point.downloads, point.average)), 1);
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+
+  for (let index = 0; index <= 4; index += 1) {
+    const value = max * index / 4;
+    const y = margin.top + plotHeight - plotHeight * index / 4;
+    const line = document.createElementNS(ns, "line");
+    line.setAttribute("x1", margin.left);
+    line.setAttribute("x2", width - margin.right);
+    line.setAttribute("y1", y);
+    line.setAttribute("y2", y);
+    line.setAttribute("stroke", "#323b4d");
+    svg.append(line);
+    const label = document.createElementNS(ns, "text");
+    label.setAttribute("x", margin.left - 10);
+    label.setAttribute("y", y + 4);
+    label.setAttribute("text-anchor", "end");
+    label.setAttribute("fill", "#aab2c2");
+    label.setAttribute("font-size", "12");
+    label.textContent = number.format(Math.round(value));
+    svg.append(label);
+  }
+
+  const xFor = (index) =>
+    margin.left + (recent.length === 1 ? plotWidth / 2 : plotWidth * index / (recent.length - 1));
+  const yFor = (value) => margin.top + plotHeight - plotHeight * value / max;
+  const pathFor = (key) =>
+    recent.map((point, index) => `${index === 0 ? "M" : "L"}${xFor(index)},${yFor(point[key])}`).join(" ");
+
+  const dailyPath = document.createElementNS(ns, "path");
+  dailyPath.setAttribute("d", pathFor("downloads"));
+  dailyPath.setAttribute("fill", "none");
+  dailyPath.setAttribute("stroke", "#5cc8ff");
+  dailyPath.setAttribute("stroke-width", "2");
+  dailyPath.setAttribute("vector-effect", "non-scaling-stroke");
+  svg.append(dailyPath);
+
+  const averagePath = document.createElementNS(ns, "path");
+  averagePath.setAttribute("d", pathFor("average"));
+  averagePath.setAttribute("fill", "none");
+  averagePath.setAttribute("stroke", "#ff5a5f");
+  averagePath.setAttribute("stroke-width", "3");
+  averagePath.setAttribute("vector-effect", "non-scaling-stroke");
+  svg.append(averagePath);
+
+  const firstLabel = document.createElementNS(ns, "text");
+  firstLabel.setAttribute("x", margin.left);
+  firstLabel.setAttribute("y", height - 18);
+  firstLabel.setAttribute("fill", "#aab2c2");
+  firstLabel.setAttribute("font-size", "12");
+  firstLabel.textContent = recent[0].day;
+  svg.append(firstLabel);
+  const lastLabel = document.createElementNS(ns, "text");
+  lastLabel.setAttribute("x", width - margin.right);
+  lastLabel.setAttribute("y", height - 18);
+  lastLabel.setAttribute("text-anchor", "end");
+  lastLabel.setAttribute("fill", "#aab2c2");
+  lastLabel.setAttribute("font-size", "12");
+  lastLabel.textContent = recent.at(-1).day;
+  svg.append(lastLabel);
+
+  elements["history-chart"].append(svg);
+  setText(elements["history-range"], `${number.format(recent.length)} days`);
+  setText(
+    elements["history-caption"],
+    `Blue: npm-reported daily downloads. Red: trailing 28-day average. Range ${
+      formatDate(`${recent[0].day}T00:00:00Z`)
+    }–${formatDate(`${recent.at(-1).day}T00:00:00Z`)}.`,
+  );
 }
 
 function renderChart(snapshots) {
@@ -175,7 +276,7 @@ function renderTable(snapshots) {
     row.append(collected);
     if (snapshot.status !== "ok") {
       const failed = document.createElement("td");
-      failed.colSpan = 4;
+      failed.colSpan = 5;
       failed.textContent = `Collection failed: ${snapshot.error ?? "Unknown error"}`;
       failed.className = "negative";
       row.append(failed);
@@ -188,11 +289,15 @@ function renderTable(snapshots) {
         ranked[0] ? `${ranked[0][0]} (${number.format(ranked[0][1])})` : "—",
         snapshot.total ? percent.format(latestDownloads / snapshot.total) : "—",
         delta == null ? "—" : `${delta >= 0 ? "+" : ""}${percent.format(delta)}`,
+        `${snapshot.healthStatus ?? "legacy"}${
+          snapshot.historyStatus === "partial" ? " · history partial" : ""
+        }`,
       ];
       values.forEach((value, index) => {
         const cell = document.createElement("td");
         cell.textContent = value;
         if (index === 3 && delta != null) cell.className = delta >= 0 ? "positive" : "negative";
+        if (index === 4) cell.className = snapshot.healthStatus ?? "";
         row.append(cell);
       });
     }
@@ -231,13 +336,37 @@ function renderPackage(packageData) {
     elements["metric-growth"].className = delta == null ? "" : delta >= 0 ? "positive" : "negative";
     setText(elements["metric-latest"], latest.total ? percent.format(latestDownloads / latest.total) : "—");
     setText(elements["metric-versions"], number.format(Object.keys(latest.downloadsByVersion).length));
-  } else {
-    ["metric-total", "metric-growth", "metric-latest", "metric-versions"].forEach((id) =>
-      setText(elements[id], "—")
+    setText(
+      elements["metric-daily"],
+      latest.lastDay?.downloads == null ? "—" : number.format(latest.lastDay.downloads),
     );
+    const globalPoint = data.globalBaseline?.dailyTotals?.find((point) => point.day === latest.lastDay?.day);
+    setText(
+      elements["metric-npm-share"],
+      globalPoint?.downloads && latest.lastDay?.downloads != null
+        ? smallPercent.format(latest.lastDay.downloads / globalPoint.downloads)
+        : "—",
+    );
+    const health = latest.healthStatus ?? "legacy";
+    setText(
+      elements["metric-health"],
+      `${health}${latest.historyStatus === "partial" ? " · partial history" : ""}`,
+    );
+    elements["metric-health"].className = `health-metric ${health}`;
+  } else {
+    [
+      "metric-total",
+      "metric-growth",
+      "metric-latest",
+      "metric-versions",
+      "metric-daily",
+      "metric-npm-share",
+      "metric-health",
+    ].forEach((id) => setText(elements[id], "—"));
     setText(elements["release-note"], "No successful collection yet");
   }
 
+  renderHistory(packageData.dailyTotals ?? []);
   renderChart(packageData.snapshots);
   renderTable(packageData.snapshots);
   elements.dashboard.hidden = false;

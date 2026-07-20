@@ -6,18 +6,41 @@ export interface PackageConfig {
 }
 
 export interface SnapshotManifest {
-  schemaVersion: 1;
+  schemaVersion: 2;
   package: string;
   collectedAt: string;
   window: { kind: "rolling-last-week"; start: string; end: string; exact: true };
   total: number;
   versionTotal: number;
-  totalsMatch: boolean;
+  rangeTotal: number;
+  integrity: {
+    versionsMatchPoint: boolean;
+    rangeMatchesPoint: boolean;
+    windowsAlign: boolean;
+  };
+  freshness: {
+    status: "fresh" | "delayed";
+    expectedEnd: string;
+    lagDays: number;
+  };
+  healthStatus: "healthy" | "delayed" | "mismatch";
+  historyStatus: "complete" | "partial";
   lastDay: { day: string; downloads: number };
   latestVersion: string | null;
+  sourceLastModified: {
+    versions: string | null;
+    pointWeek: string | null;
+    rangeWeek: string | null;
+    pointDay: string | null;
+  };
   chunkCount: number;
   versionCount: number;
   checksum: string;
+}
+
+export interface DailyDownload {
+  day: string;
+  downloads: number;
 }
 
 export interface SnapshotChunk {
@@ -105,6 +128,35 @@ export async function listManifests(
     manifests.push(entry.value);
   }
   return manifests.reverse();
+}
+
+export async function storeDailyDownloads(
+  kv: Deno.Kv,
+  prefix: "daily" | "global-daily",
+  packageName: string | null,
+  points: DailyDownload[],
+): Promise<void> {
+  const keyFor = (day: string): Deno.KvKey => packageName ? [prefix, packageName, day] : [prefix, day];
+  for (let index = 0; index < points.length; index += 10) {
+    let atomic = kv.atomic();
+    for (const point of points.slice(index, index + 10)) atomic = atomic.set(keyFor(point.day), point);
+    const result = await atomic.commit();
+    if (!result.ok) throw new Error(`Could not store ${prefix} batch`);
+  }
+}
+
+export async function listDailyDownloads(
+  kv: Deno.Kv,
+  prefix: "daily" | "global-daily",
+  packageName: string | null,
+  limit = 730,
+): Promise<DailyDownload[]> {
+  const keyPrefix: Deno.KvKey = packageName ? [prefix, packageName] : [prefix];
+  const points: DailyDownload[] = [];
+  for await (const entry of kv.list<DailyDownload>({ prefix: keyPrefix }, { reverse: true, limit })) {
+    points.push(entry.value);
+  }
+  return points.reverse();
 }
 
 export async function ensurePackages(kv: Deno.Kv, packages: PackageConfig[]): Promise<void> {

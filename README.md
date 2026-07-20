@@ -15,12 +15,20 @@ A top-level `Deno.cron()` runs every day at **04:17 UTC**. For each tracked pack
 - `registry.npmjs.org/{package}/latest` and, when needed, the packument — current release and publication
   dates.
 
-The collector verifies whether the sum of version counts equals npm's reported package total. One package
-failure is retained without dropping successful package results.
+The collector performs three-way reconciliation: per-version sum vs point total, daily range sum vs point
+total, and exact window alignment across sources. It records `healthy`, `delayed`, or `mismatch` rather than
+silently accepting inconsistent data. One package failure is retained without dropping successful package
+results.
 
 Snapshots are keyed by npm's reported window end date, so a retry is idempotent. Version maps are split into
 bounded Deno KV chunks, checksummed, then made visible by an immutable manifest. A distributed KV lock
 prevents overlapping cron/manual runs.
+
+On first collection, exact daily package totals are backfilled from the package's publication date in bounded
+365-day range requests. npm-wide daily totals are backfilled to 2015-01-10 and retained as a global
+anomaly/normalization baseline. Subsequent runs only fetch missing days. Unscoped packages use bulk
+point/range requests in groups of at most 128, with automatic individual fallback; scoped packages remain
+isolated because npm does not support them in bulk.
 
 ## Important data limitation
 
@@ -81,7 +89,7 @@ Without `ADMIN_TOKEN`, the manual endpoint returns 404. The cron does not need a
 Health and data endpoints:
 
 - `GET /healthz`
-- `GET /api/dashboard`
+- `GET /api/dashboard` — version snapshots, exact daily package history, and npm-wide baseline
 
 ## Add packages
 
