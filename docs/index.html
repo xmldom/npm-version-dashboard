@@ -1,117 +1,135 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Weekly npm download trends by package version, collected from npm's rolling seven-day API.">
-  <meta name="theme-color" content="#10131a">
-  <title>npm Version Dashboard</title>
-  <link rel="icon" href="favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css">
-  <script type="module" src="app.js"></script>
-</head>
-<body>
-  <a class="skip-link" href="#content">Skip to dashboard</a>
-  <header class="site-header">
-    <div>
-      <p class="eyebrow">Seven-day npm snapshots</p>
-      <h1>Version adoption, over time</h1>
-      <p class="lede">Track which package versions are actually being downloaded—not only the package total.</p>
-    </div>
-    <a class="source-link" href="data/dashboard.json">Raw dashboard data</a>
-  </header>
-
-  <main id="content" tabindex="-1">
-    <section class="controls" aria-labelledby="controls-title">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta
+      name="description"
+      content="Weekly npm download trends by package version, collected from npm's rolling seven-day API."
+    >
+    <meta name="theme-color" content="#10131a">
+    <title>npm Version Dashboard</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="styles.css">
+    <script type="module" src="app.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#content">Skip to dashboard</a>
+    <header class="site-header">
       <div>
-        <h2 id="controls-title">Package</h2>
-        <p id="package-help">Choose a package. The URL updates so this view can be shared.</p>
+        <p class="eyebrow">Seven-day npm snapshots</p>
+        <h1>Version adoption, over time</h1>
+        <p class="lede">
+          Track which package versions are actually being downloaded—not only the package total.
+        </p>
       </div>
-      <label for="package-select">Tracked package</label>
-      <select id="package-select" aria-describedby="package-help"></select>
-    </section>
+      <a class="source-link" href="/api/dashboard">Raw dashboard data</a>
+    </header>
 
-    <div id="status" class="status" role="status" aria-live="polite">Loading collected data…</div>
+    <main id="content" tabindex="-1">
+      <section class="controls" aria-labelledby="controls-title">
+        <div>
+          <h2 id="controls-title">Package</h2>
+          <p id="package-help">Choose a package. The URL updates so this view can be shared.</p>
+        </div>
+        <label for="package-select">Tracked package</label>
+        <select id="package-select" aria-describedby="package-help"></select>
+      </section>
 
-    <section id="dashboard" hidden aria-labelledby="package-title">
-      <div class="package-heading">
-        <div>
-          <p id="package-group" class="eyebrow"></p>
-          <h2 id="package-title"></h2>
-          <p id="package-name" class="package-name"></p>
-          <p id="release-note" class="release-note"></p>
-        </div>
-        <a id="npm-link" class="button-link">View on npm</a>
-      </div>
+      <div id="status" class="status" role="status" aria-live="polite">Loading collected data…</div>
 
-      <dl class="metrics" aria-label="Latest seven-day snapshot">
-        <div>
-          <dt>Weekly downloads</dt>
-          <dd id="metric-total">—</dd>
-        </div>
-        <div>
-          <dt>Week over week</dt>
-          <dd id="metric-growth">—</dd>
-        </div>
-        <div>
-          <dt>Latest-version share</dt>
-          <dd id="metric-latest">—</dd>
-        </div>
-        <div>
-          <dt>Downloaded versions</dt>
-          <dd id="metric-versions">—</dd>
-        </div>
-      </dl>
-
-      <section class="panel chart-panel" aria-labelledby="chart-title">
-        <div class="panel-heading">
+      <section id="dashboard" hidden aria-labelledby="package-title">
+        <div class="package-heading">
           <div>
-            <h3 id="chart-title">Downloads by version</h3>
-            <p>Each bar is one rolling seven-day snapshot. The highest-volume versions are shown separately; the rest are grouped as Other.</p>
+            <p id="package-group" class="eyebrow"></p>
+            <h2 id="package-title"></h2>
+            <p id="package-name" class="package-name"></p>
+            <p id="release-note" class="release-note"></p>
           </div>
-          <span id="latest-date" class="date-chip"></span>
+          <a id="npm-link" class="button-link">View on npm</a>
         </div>
-        <figure>
-          <div id="chart" class="chart" aria-hidden="true"></div>
-          <figcaption id="chart-caption"></figcaption>
-        </figure>
-        <ul id="legend" class="legend" aria-label="Chart legend"></ul>
-      </section>
 
-      <section class="panel" aria-labelledby="table-title">
-        <div class="panel-heading">
+        <dl class="metrics" aria-label="Latest seven-day snapshot">
           <div>
-            <h3 id="table-title">Weekly snapshots</h3>
-            <p>The table is the accessible data alternative to the chart.</p>
+            <dt>Weekly downloads</dt>
+            <dd id="metric-total">—</dd>
           </div>
-        </div>
-        <div class="table-scroll" tabindex="0" role="region" aria-label="Weekly npm version download snapshots">
-          <table>
-            <caption class="visually-hidden">Weekly npm downloads, top version, latest-version share, and change from the prior snapshot</caption>
-            <thead>
-              <tr>
-                <th scope="col">Collected</th>
-                <th scope="col">Downloads</th>
-                <th scope="col">Top version</th>
-                <th scope="col">Latest share</th>
-                <th scope="col">Change</th>
-              </tr>
-            </thead>
-            <tbody id="snapshot-rows"></tbody>
-          </table>
-        </div>
-      </section>
+          <div>
+            <dt>Week over week</dt>
+            <dd id="metric-growth">—</dd>
+          </div>
+          <div>
+            <dt>Latest-version share</dt>
+            <dd id="metric-latest">—</dd>
+          </div>
+          <div>
+            <dt>Downloaded versions</dt>
+            <dd id="metric-versions">—</dd>
+          </div>
+        </dl>
 
-      <section class="panel caveats" aria-labelledby="notes-title">
-        <h3 id="notes-title">How to read this data</h3>
-        <ul id="caveat-list"></ul>
-        <p>Collection source: <code>api.npmjs.org/versions/{package}/last-week</code></p>
-      </section>
-    </section>
-  </main>
+        <section class="panel chart-panel" aria-labelledby="chart-title">
+          <div class="panel-heading">
+            <div>
+              <h3 id="chart-title">Downloads by version</h3>
+              <p>
+                Each bar is one rolling seven-day snapshot. The highest-volume versions are shown separately;
+                the rest are grouped as Other.
+              </p>
+            </div>
+            <span id="latest-date" class="date-chip"></span>
+          </div>
+          <figure>
+            <div id="chart" class="chart" aria-hidden="true"></div>
+            <figcaption id="chart-caption"></figcaption>
+          </figure>
+          <ul id="legend" class="legend" aria-label="Chart legend"></ul>
+        </section>
 
-  <footer>
-    <p>Data is collected weekly and retained as immutable snapshots. This project is not affiliated with npm.</p>
-  </footer>
-</body>
+        <section class="panel" aria-labelledby="table-title">
+          <div class="panel-heading">
+            <div>
+              <h3 id="table-title">Weekly snapshots</h3>
+              <p>The table is the accessible data alternative to the chart.</p>
+            </div>
+          </div>
+          <div
+            class="table-scroll"
+            tabindex="0"
+            role="region"
+            aria-label="Weekly npm version download snapshots"
+          >
+            <table>
+              <caption class="visually-hidden">
+                Weekly npm downloads, top version, latest-version share, and change from the prior snapshot
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Collected</th>
+                  <th scope="col">Downloads</th>
+                  <th scope="col">Top version</th>
+                  <th scope="col">Latest share</th>
+                  <th scope="col">Change</th>
+                </tr>
+              </thead>
+              <tbody id="snapshot-rows"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel caveats" aria-labelledby="notes-title">
+          <h3 id="notes-title">How to read this data</h3>
+          <ul id="caveat-list"></ul>
+          <p>Collection source: <code>api.npmjs.org/versions/{package}/last-week</code></p>
+        </section>
+      </section>
+    </main>
+
+    <footer>
+      <p>
+        Data is collected daily and retained as immutable seven-day snapshots. This project is not affiliated
+        with npm.
+      </p>
+    </footer>
+  </body>
 </html>

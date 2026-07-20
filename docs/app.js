@@ -1,7 +1,22 @@
 const elements = Object.fromEntries([
-  "package-select", "status", "dashboard", "package-title", "package-name", "package-group", "npm-link",
-  "metric-total", "metric-growth", "metric-latest", "metric-versions", "latest-date", "release-note", "chart", "chart-caption",
-  "legend", "snapshot-rows", "caveat-list",
+  "package-select",
+  "status",
+  "dashboard",
+  "package-title",
+  "package-name",
+  "package-group",
+  "npm-link",
+  "metric-total",
+  "metric-growth",
+  "metric-latest",
+  "metric-versions",
+  "latest-date",
+  "release-note",
+  "chart",
+  "chart-caption",
+  "legend",
+  "snapshot-rows",
+  "caveat-list",
 ].map((id) => [id, document.getElementById(id)]));
 
 const number = new Intl.NumberFormat("en-GB");
@@ -101,7 +116,9 @@ function renderChart(snapshots) {
       rect.setAttribute("height", Math.max(0, segmentHeight));
       rect.setAttribute("fill", colors.get(item.version));
       const title = document.createElementNS(ns, "title");
-      title.textContent = `${formatDate(snapshot.collectedAt)} · ${item.version}: ${number.format(item.downloads)}`;
+      title.textContent = `${formatDate(snapshot.collectedAt)} · ${item.version}: ${
+        number.format(item.downloads)
+      }`;
       rect.append(title);
       svg.append(rect);
       consumed += segmentHeight;
@@ -118,7 +135,10 @@ function renderChart(snapshots) {
   elements.chart.append(svg);
 
   for (const version of legendVersions) {
-    if (version === "Other" && !successful.some((snapshot) => versionRows(snapshot, versions).some((item) => item.version === "Other"))) continue;
+    if (
+      version === "Other" &&
+      !successful.some((snapshot) => versionRows(snapshot, versions).some((item) => item.version === "Other"))
+    ) continue;
     const item = document.createElement("li");
     const swatch = document.createElement("span");
     swatch.className = "swatch";
@@ -127,14 +147,27 @@ function renderChart(snapshots) {
     item.append(swatch, document.createTextNode(version));
     elements.legend.append(item);
   }
-  setText(elements["chart-caption"], `${successful.length} successful rolling seven-day snapshot${successful.length === 1 ? "" : "s"}. Exact calendar-week boundaries are not provided by npm.`);
+  const latestWindow = successful.at(-1)?.window;
+  const windowDescription = latestWindow?.exact && latestWindow.start && latestWindow.end
+    ? ` Latest npm window: ${formatDate(`${latestWindow.start}T00:00:00Z`)}–${
+      formatDate(`${latestWindow.end}T00:00:00Z`)
+    }.`
+    : "";
+  setText(
+    elements["chart-caption"],
+    `${successful.length} successful rolling seven-day snapshot${
+      successful.length === 1 ? "" : "s"
+    }.${windowDescription}`,
+  );
 }
 
 function renderTable(snapshots) {
   clear(elements["snapshot-rows"]);
   snapshots.slice().reverse().forEach((snapshot, reverseIndex) => {
     const chronologicalIndex = snapshots.length - reverseIndex - 1;
-    const previous = [...snapshots.slice(0, chronologicalIndex)].reverse().find((item) => item.status === "ok");
+    const previous = [...snapshots.slice(0, chronologicalIndex)].reverse().find((item) =>
+      item.status === "ok"
+    );
     const row = document.createElement("tr");
     const collected = document.createElement("th");
     collected.scope = "row";
@@ -175,22 +208,33 @@ function renderPackage(packageData) {
   setText(elements["package-name"], packageData.name);
   setText(elements["package-group"], packageData.group ?? "npm package");
   elements["npm-link"].href = `https://www.npmjs.com/package/${packageData.name}`;
-  setText(elements["latest-date"], latest ? `Collected ${formatDate(latest.collectedAt)}` : "No successful collection");
+  setText(
+    elements["latest-date"],
+    latest ? `Collected ${formatDate(latest.collectedAt)}` : "No successful collection",
+  );
 
   if (latest) {
     const delta = growth(latest, previous);
     const latestDownloads = latest.downloadsByVersion[latest.latestVersion] ?? 0;
     const releasedAt = latest.releases?.[latest.latestVersion];
-    setText(elements["release-note"], latest.latestVersion
-      ? `Latest ${latest.latestVersion}${releasedAt ? ` · released ${formatDate(releasedAt)}` : ""}`
-      : "Latest release unavailable");
+    setText(
+      elements["release-note"],
+      latest.latestVersion
+        ? `Latest ${latest.latestVersion}${releasedAt ? ` · released ${formatDate(releasedAt)}` : ""}`
+        : "Latest release unavailable",
+    );
     setText(elements["metric-total"], number.format(latest.total));
-    setText(elements["metric-growth"], delta == null ? "First snapshot" : `${delta >= 0 ? "+" : ""}${percent.format(delta)}`);
+    setText(
+      elements["metric-growth"],
+      delta == null ? "First snapshot" : `${delta >= 0 ? "+" : ""}${percent.format(delta)}`,
+    );
     elements["metric-growth"].className = delta == null ? "" : delta >= 0 ? "positive" : "negative";
     setText(elements["metric-latest"], latest.total ? percent.format(latestDownloads / latest.total) : "—");
     setText(elements["metric-versions"], number.format(Object.keys(latest.downloadsByVersion).length));
   } else {
-    ["metric-total", "metric-growth", "metric-latest", "metric-versions"].forEach((id) => setText(elements[id], "—"));
+    ["metric-total", "metric-growth", "metric-latest", "metric-versions"].forEach((id) =>
+      setText(elements[id], "—")
+    );
     setText(elements["release-note"], "No successful collection yet");
   }
 
@@ -211,11 +255,17 @@ function selectPackage(name, updateUrl = true) {
   }
 }
 
+async function fetchDashboard() {
+  const apiResponse = await fetch("/api/dashboard");
+  if (apiResponse.ok) return await apiResponse.json();
+  const staticResponse = await fetch("data/dashboard.json");
+  if (!staticResponse.ok) throw new Error(`${staticResponse.status} ${staticResponse.statusText}`);
+  return await staticResponse.json();
+}
+
 async function start() {
   try {
-    const response = await fetch("data/dashboard.json");
-    if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
-    data = await response.json();
+    data = await fetchDashboard();
     if (!data.packages?.length) throw new Error("No packages are configured.");
     for (const item of data.packages) {
       const option = document.createElement("option");

@@ -1,20 +1,87 @@
 # npm Version Dashboard
 
-A static, evidence-preserving dashboard for npm downloads **by package version**. It exists because package-total trend tools do not show how downloads move between releases.
+A Deno Deploy dashboard that tracks npm downloads **by package version**. It exists because package-total
+trend tools do not show how downloads move between releases.
 
 The dashboard is seeded with [`modern-web-guidance`](https://www.npmjs.com/package/modern-web-guidance).
 
+## How collection works
+
+A top-level `Deno.cron()` runs every day at **04:17 UTC**. For each tracked package it fetches:
+
+- `api.npmjs.org/versions/{package}/last-week` — rolling seven-day counts by version;
+- `api.npmjs.org/downloads/point/last-week/{package}` — exact inclusive window and package total;
+- `api.npmjs.org/downloads/point/last-day/{package}` — exact latest daily package total;
+- `registry.npmjs.org/{package}/latest` and, when needed, the packument — current release and publication
+  dates.
+
+The collector verifies whether the sum of version counts equals npm's reported package total. One package
+failure is retained without dropping successful package results.
+
+Snapshots are keyed by npm's reported window end date, so a retry is idempotent. Version maps are split into
+bounded Deno KV chunks, checksummed, then made visible by an immutable manifest. A distributed KV lock
+prevents overlapping cron/manual runs.
+
 ## Important data limitation
 
-npm exposes per-version counts only for a rolling seven-day period:
+npm exposes per-version counts only for a rolling seven-day period. `last-day`, `last-month`, `last-year`, and
+custom date ranges are not supported by the per-version endpoint.
+
+There is no historical per-version backfill. Daily snapshots provide an honest rolling version-share series,
+but they do **not** uniquely identify exact daily counts for versions that predate tracking:
 
 ```text
-https://api.npmjs.org/versions/{package}/last-week
+W[t,v] - W[t-1,v] = D[t,v] - D[t-7,v]
 ```
 
-There is no historical per-version backfill. This project creates history by taking one immutable snapshot every Monday. The API does not report exact start/end timestamps, and npm data can lag, so these are labelled **rolling seven-day snapshots**, not exact calendar weeks.
+Package-total history can be backfilled through npm's range API, but that cannot reconstruct historical
+version shares. Any future per-version daily estimates must be labelled inferred and retain the raw
+observations.
 
-Package-total history can be backfilled through npm's range API, but that cannot reconstruct historical version shares.
+## Run locally
+
+Requires Deno 2.8+.
+
+```sh
+deno task collect
+deno task dev
+```
+
+Open `http://localhost:8000/`.
+
+Checks:
+
+```sh
+deno fmt --check
+deno lint
+deno task check
+npm test
+```
+
+The dependency-free Node scripts and JSON snapshot remain as a static/prototype compatibility path; Deno
+Deploy uses `server.ts`, Deno KV, and `Deno.cron()`.
+
+## Deploy on Deno Deploy
+
+1. Create a Deno Deploy app from this GitHub repository.
+2. Use `server.ts` as the production entrypoint.
+3. Attach a Deno KV database/timeline if the project setup does not provision one automatically.
+4. Deploy. Deno discovers the top-level daily cron registration.
+5. Optionally set `ADMIN_TOKEN` as an encrypted environment variable. This enables an authenticated manual
+   collection:
+
+```sh
+curl -X POST \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  https://YOUR_APP/api/admin/collect
+```
+
+Without `ADMIN_TOKEN`, the manual endpoint returns 404. The cron does not need a secret.
+
+Health and data endpoints:
+
+- `GET /healthz`
+- `GET /api/dashboard`
 
 ## Add packages
 
@@ -38,49 +105,23 @@ Edit [`config/packages.json`](config/packages.json):
 }
 ```
 
-Scoped names are encoded as a single URL segment when querying npm.
-
-## Collect locally
-
-Requires Node.js 22 or later and no runtime dependencies.
-
-```sh
-npm install
-npm test
-npm run collect
-```
-
-Collection:
-
-1. reads the package inventory;
-2. fetches each package independently with timeout, retries, and exponential backoff;
-3. records successful and failed packages without dropping other results;
-4. writes `data/snapshots/YYYY-MM-DD.json` atomically and never overwrites it;
-5. rebuilds `data/dashboard.json` and `docs/data/dashboard.json`.
-
-A second run on the same UTC date is idempotent and does not rewrite the snapshot.
-
-## Automation
-
-- `.github/workflows/collect.yml` runs every Monday at 09:17 UTC and supports manual dispatch.
-- `.github/workflows/deploy.yml` deploys `docs/` to GitHub Pages.
-
-The collector needs only the public npm APIs. The workflow's write permission is limited to committing data snapshots.
+Scoped names are encoded as a single URL segment when querying npm. A future authenticated UI can add per-user
+package-follow records without duplicating package observations.
 
 ## Dashboard accessibility
 
-Charts are visual summaries. Every chart has a semantic table containing the same data. The page uses native controls, landmarks, visible focus, responsive intrinsic layout, reduced-motion handling, and horizontal overflow for wide tables/charts.
+Charts are visual summaries. Every chart has a semantic table containing the same data. The page uses native
+controls, landmarks, visible focus, responsive intrinsic layout, reduced-motion handling, and bounded
+horizontal overflow for wide tables/charts.
 
-## What the dashboard shows
+## Security
 
-- rolling seven-day package downloads;
-- week-over-week total change;
-- version share over time;
-- latest-version adoption share;
-- number of downloaded versions;
-- top version per snapshot;
-- release dates for observed versions in raw data;
-- explicit failed collection states and source caveats.
+- static responses use a restrictive Content Security Policy and browser security headers;
+- the manual collection endpoint is absent unless `ADMIN_TOKEN` is configured;
+- package names originate from trusted config/KV records and are encoded before upstream requests;
+- there is no anonymous mutation endpoint;
+- collection has timeout, bounded retries, a lock, immutable manifests, checksums, and per-package failure
+  isolation.
 
 ## License
 

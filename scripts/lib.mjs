@@ -1,4 +1,4 @@
-import { readFile, readdir, mkdir, writeFile, rename, copyFile } from "node:fs/promises";
+import { copyFile, mkdir, readdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
 export const ROOT = new URL("../", import.meta.url).pathname;
@@ -14,7 +14,9 @@ export async function fetchJson(url, { fetchImpl = fetch, attempts = 3, timeoutM
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
       const response = await fetchImpl(url, {
-        headers: { "user-agent": "npm-version-dashboard/0.1 (+https://github.com/PaulKinlan/npm-version-dashboard)" },
+        headers: {
+          "user-agent": "npm-version-dashboard/0.1 (+https://github.com/PaulKinlan/npm-version-dashboard)",
+        },
         signal: controller.signal,
       });
       if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
@@ -62,10 +64,14 @@ export async function atomicWriteJson(path, value) {
 
 export async function readConfig(root = ROOT) {
   const value = JSON.parse(await readFile(join(root, "config/packages.json"), "utf8"));
-  if (!Array.isArray(value.packages) || value.packages.length === 0) throw new Error("config/packages.json must contain packages");
+  if (!Array.isArray(value.packages) || value.packages.length === 0) {
+    throw new Error("config/packages.json must contain packages");
+  }
   const names = new Set();
   for (const item of value.packages) {
-    if (!item.name || names.has(item.name)) throw new Error(`Invalid or duplicate package: ${item.name ?? "<missing>"}`);
+    if (!item.name || names.has(item.name)) {
+      throw new Error(`Invalid or duplicate package: ${item.name ?? "<missing>"}`);
+    }
     names.add(item.name);
   }
   return value.packages;

@@ -1,13 +1,13 @@
 import { access } from "node:fs/promises";
 import { join } from "node:path";
 import {
-  ROOT,
   atomicWriteJson,
   encodePackageName,
   fetchJson,
   normalizeVersionDownloads,
   readConfig,
   releaseMetadata,
+  ROOT,
   writeDashboard,
 } from "./lib.mjs";
 
@@ -59,7 +59,7 @@ const snapshot = {
   window: {
     kind: "rolling-last-week",
     sourceLabel: "last-week",
-    exactStartAndEndUnavailable: true
+    exactStartAndEndUnavailable: true,
   },
   packages: results,
 };

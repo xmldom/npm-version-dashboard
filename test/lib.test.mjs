@@ -1,6 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildDashboard, encodePackageName, normalizeVersionDownloads, releaseMetadata } from "../scripts/lib.mjs";
+import {
+  buildDashboard,
+  encodePackageName,
+  normalizeVersionDownloads,
+  releaseMetadata,
+} from "../scripts/lib.mjs";
 
 test("encodes scoped package names as one URL segment", () => {
   assert.equal(encodePackageName("@scope/package"), "%40scope%2Fpackage");
@@ -14,10 +19,16 @@ test("normalizes and totals version downloads", () => {
 });
 
 test("keeps release dates only for observed versions", () => {
-  assert.deepEqual(releaseMetadata({ "dist-tags": { latest: "2.0.0" }, time: { "1.0.0": "2025-01-01", "2.0.0": "2025-02-01", "3.0.0": "2025-03-01" } }, ["1.0.0", "2.0.0"]), {
-    latestVersion: "2.0.0",
-    releases: { "1.0.0": "2025-01-01", "2.0.0": "2025-02-01" },
-  });
+  assert.deepEqual(
+    releaseMetadata({
+      "dist-tags": { latest: "2.0.0" },
+      time: { "1.0.0": "2025-01-01", "2.0.0": "2025-02-01", "3.0.0": "2025-03-01" },
+    }, ["1.0.0", "2.0.0"]),
+    {
+      latestVersion: "2.0.0",
+      releases: { "1.0.0": "2025-01-01", "2.0.0": "2025-02-01" },
+    },
+  );
 });
 
 test("aggregates successful and failed package snapshots without dropping either", () => {
@@ -27,7 +38,14 @@ test("aggregates successful and failed package snapshots without dropping either
       collectedAt: "2026-01-01T00:00:00Z",
       window: { kind: "rolling-last-week" },
       packages: [
-        { name: "one", status: "ok", total: 8, downloadsByVersion: { "1.0.0": 8 }, latestVersion: "1.0.0", releases: {} },
+        {
+          name: "one",
+          status: "ok",
+          total: 8,
+          downloadsByVersion: { "1.0.0": 8 },
+          latestVersion: "1.0.0",
+          releases: {},
+        },
         { name: "two", status: "failed", error: "503" },
       ],
     }],

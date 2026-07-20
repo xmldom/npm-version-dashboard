@@ -1,0 +1,19 @@
+{
+  "tasks": {
+    "dev": "deno run --allow-net --allow-read --allow-env --unstable-kv --unstable-cron server.ts",
+    "check": "deno check server.ts deno/collector.ts deno/store.ts && deno test --allow-read --unstable-kv deno/",
+    "collect": "deno run --allow-net --allow-read --allow-env --unstable-kv scripts/collect-deno.ts"
+  },
+  "fmt": {
+    "lineWidth": 110,
+    "semiColons": true
+  },
+  "lint": {
+    "rules": {
+      "tags": ["recommended"]
+    }
+  },
+  "deploy": {
+    "include": ["server.ts", "deno/", "config/", "docs/"]
+  }
+}
