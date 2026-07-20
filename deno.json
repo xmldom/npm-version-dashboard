@@ -15,6 +15,10 @@
   },
   "deploy": {
     "org": "paulkinlan-ea",
-    "app": "npm-version-dashboard"
+    "app": "npm-version-dashboard",
+    "runtime": {
+      "type": "dynamic",
+      "entrypoint": "server.ts"
+    }
   }
 }
