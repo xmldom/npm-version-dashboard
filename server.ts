@@ -145,7 +145,12 @@ Deno.serve(async (request) => {
   const response = await serveDir(request, { fsRoot: "docs", quiet: true });
   const headers = new Headers(response.headers);
   for (const [name, value] of Object.entries(securityHeaders)) headers.set(name, value);
-  if (url.pathname === "/" || url.pathname.endsWith(".html")) headers.set("cache-control", "no-cache");
+  if (
+    url.pathname === "/" ||
+    url.pathname.endsWith(".html") ||
+    url.pathname.endsWith(".js") ||
+    url.pathname.endsWith(".css")
+  ) headers.set("cache-control", "no-cache");
   else headers.set("cache-control", "public, max-age=3600");
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 });
