@@ -1,0 +1,10 @@
+{
+  "packages": [
+    {
+      "name": "modern-web-guidance",
+      "label": "Modern Web Guidance",
+      "group": "Chrome DevRel",
+      "important": true
+    }
+  ]
+}
