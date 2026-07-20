@@ -63,6 +63,7 @@ async function dashboardResponse(): Promise<Response> {
         : null;
       return {
         collectedAt: manifest.collectedAt,
+        lastCheckedAt: quality?.collectedAt ?? manifest.collectedAt,
         window: manifest.window,
         status: "ok",
         total: manifest.total,

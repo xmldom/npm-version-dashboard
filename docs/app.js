@@ -29,6 +29,15 @@ const number = new Intl.NumberFormat("en-GB");
 const percent = new Intl.NumberFormat("en-GB", { style: "percent", maximumFractionDigits: 1 });
 const smallPercent = new Intl.NumberFormat("en-GB", { style: "percent", maximumFractionDigits: 6 });
 const date = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "UTC" });
+const dateTime = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  timeZone: "UTC",
+  timeZoneName: "short",
+});
 const palette = ["#ff5a5f", "#ff9f43", "#ffd166", "#68d391", "#5cc8ff", "#a78bfa", "#f472b6", "#7f8aa3"];
 let data;
 
@@ -42,6 +51,10 @@ function clear(element) {
 
 function formatDate(value) {
   return date.format(new Date(value));
+}
+
+function formatDateTime(value) {
+  return dateTime.format(new Date(value));
 }
 
 function growth(current, previous) {
@@ -295,7 +308,9 @@ function renderTable(snapshots) {
     const row = document.createElement("tr");
     const collected = document.createElement("th");
     collected.scope = "row";
-    collected.textContent = formatDate(snapshot.collectedAt);
+    collected.textContent = snapshot.window?.end
+      ? formatDate(`${snapshot.window.end}T00:00:00Z`)
+      : formatDate(snapshot.collectedAt);
     row.append(collected);
     if (snapshot.status !== "ok") {
       const failed = document.createElement("td");
@@ -338,7 +353,11 @@ function renderPackage(packageData) {
   elements["npm-link"].href = `https://www.npmjs.com/package/${packageData.name}`;
   setText(
     elements["latest-date"],
-    latest ? `Collected ${formatDate(latest.collectedAt)}` : "No successful collection",
+    latest
+      ? `Checked ${formatDateTime(latest.lastCheckedAt ?? latest.collectedAt)} · npm window ends ${
+        formatDate(`${latest.window.end}T00:00:00Z`)
+      }`
+      : "No successful collection",
   );
 
   if (latest) {
