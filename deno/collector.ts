@@ -323,7 +323,13 @@ async function collectPackage(
     collectedAt,
   });
 
-  return await storeSnapshot(kv, {
+  const sourceLastModified = {
+    versions: versionsPayload.lastModified,
+    pointWeek: week.lastModified,
+    rangeWeek: range.lastModified,
+    pointDay: day.lastModified,
+  };
+  const status = await storeSnapshot(kv, {
     schemaVersion: 2,
     package: item.name,
     collectedAt,
@@ -337,14 +343,19 @@ async function collectPackage(
     historyStatus,
     lastDay: { day: day.data.end, downloads: day.data.downloads },
     latestVersion: metadata.latestVersion,
-    sourceLastModified: {
-      versions: versionsPayload.lastModified,
-      pointWeek: week.lastModified,
-      rangeWeek: range.lastModified,
-      pointDay: day.lastModified,
-    },
+    sourceLastModified,
     versionCount: entries.length,
   }, entries);
+  await kv.set(["assessment", item.name, week.data.end], {
+    collectedAt,
+    rangeTotal,
+    integrity: assessment.integrity,
+    freshness: assessment.freshness,
+    healthStatus: assessment.healthStatus,
+    historyStatus,
+    sourceLastModified,
+  });
+  return status;
 }
 
 export async function collectAll(kv: Deno.Kv): Promise<CollectionResult> {

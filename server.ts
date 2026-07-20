@@ -8,6 +8,7 @@ import {
   listPackages,
   loadVersions,
   type PackageConfig,
+  type SnapshotAssessment,
 } from "./deno/store.ts";
 
 const kv = await Deno.openKv(Deno.env.get("DENO_KV_PATH"));
@@ -51,6 +52,12 @@ async function dashboardResponse(): Promise<Response> {
     ]);
     const snapshots = await Promise.all(manifests.map(async (manifest) => {
       const downloadsByVersion = await loadVersions(kv, manifest);
+      const assessment = await kv.get<SnapshotAssessment>([
+        "assessment",
+        item.name,
+        manifest.window.end,
+      ]);
+      const quality = assessment.value;
       const latestRelease = manifest.latestVersion
         ? await kv.get<{ publishedAt: string }>(["release", item.name, manifest.latestVersion])
         : null;
@@ -60,16 +67,17 @@ async function dashboardResponse(): Promise<Response> {
         status: "ok",
         total: manifest.total,
         versionTotal: manifest.versionTotal,
-        rangeTotal: manifest.rangeTotal ?? null,
-        integrity: manifest.integrity ?? {
+        rangeTotal: quality?.rangeTotal ?? manifest.rangeTotal ?? null,
+        integrity: quality?.integrity ?? manifest.integrity ?? {
           versionsMatchPoint: (manifest as unknown as { totalsMatch?: boolean }).totalsMatch ?? false,
           rangeMatchesPoint: null,
           windowsAlign: null,
         },
-        freshness: manifest.freshness ?? null,
-        healthStatus: manifest.healthStatus ?? "legacy",
-        historyStatus: manifest.historyStatus ?? "partial",
-        sourceLastModified: manifest.sourceLastModified ?? null,
+        freshness: quality?.freshness ?? manifest.freshness ?? null,
+        healthStatus: quality?.healthStatus ?? manifest.healthStatus ?? "legacy",
+        historyStatus: quality?.historyStatus ?? manifest.historyStatus ??
+          (dailyTotals.length ? "complete" : "partial"),
+        sourceLastModified: quality?.sourceLastModified ?? manifest.sourceLastModified ?? null,
         lastDay: manifest.lastDay,
         downloadsByVersion,
         latestVersion: manifest.latestVersion,

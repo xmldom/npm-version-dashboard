@@ -43,6 +43,16 @@ export interface DailyDownload {
   downloads: number;
 }
 
+export interface SnapshotAssessment {
+  collectedAt: string;
+  rangeTotal: number;
+  integrity: SnapshotManifest["integrity"];
+  freshness: SnapshotManifest["freshness"];
+  healthStatus: SnapshotManifest["healthStatus"];
+  historyStatus: SnapshotManifest["historyStatus"];
+  sourceLastModified: SnapshotManifest["sourceLastModified"];
+}
+
 export interface SnapshotChunk {
   versions: Record<string, number>;
 }
