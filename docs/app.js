@@ -49,6 +49,25 @@ function growth(current, previous) {
   return (current.total - previous.total) / previous.total;
 }
 
+function compareSemverDescending(a, b) {
+  const parse = (version) => {
+    const normalized = version.replace(/^v/, "").split("+", 1)[0];
+    const separator = normalized.indexOf("-");
+    const core = separator === -1 ? normalized : normalized.slice(0, separator);
+    const prerelease = separator === -1 ? "" : normalized.slice(separator + 1);
+    return { core: core.split(".").map((part) => Number.parseInt(part, 10) || 0), prerelease };
+  };
+  const left = parse(a);
+  const right = parse(b);
+  for (let index = 0; index < Math.max(left.core.length, right.core.length); index += 1) {
+    const difference = (right.core[index] ?? 0) - (left.core[index] ?? 0);
+    if (difference) return difference;
+  }
+  if (!left.prerelease && right.prerelease) return -1;
+  if (left.prerelease && !right.prerelease) return 1;
+  return right.prerelease.localeCompare(left.prerelease, undefined, { numeric: true });
+}
+
 function topVersions(snapshots, limit = 7) {
   const totals = new Map();
   for (const snapshot of snapshots) {
@@ -56,7 +75,11 @@ function topVersions(snapshots, limit = 7) {
       totals.set(version, (totals.get(version) ?? 0) + downloads);
     }
   }
-  return [...totals.entries()].sort((a, b) => b[1] - a[1]).slice(0, limit).map(([version]) => version);
+  return [...totals.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([version]) => version)
+    .sort(compareSemverDescending);
 }
 
 function versionRows(snapshot, versions) {
