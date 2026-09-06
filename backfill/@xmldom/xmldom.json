@@ -1,0 +1,26 @@
+{
+  "package": "@xmldom/xmldom",
+  "note": "Manually captured baseline so the trajectory has an anchor point that predates this service. Top-12 versions by downloads (~98% of the week's volume); the long tail is not preserved, so this snapshot is marked partial.",
+  "source": "https://api.npmjs.org/versions/@xmldom%2Fxmldom/last-week",
+  "capturedOn": "2026-08-23",
+  "partial": true,
+  "weekTotalDownloads": 46803401,
+  "collectedAt": "2026-08-23T00:00:00.000Z",
+  "window": { "start": "2026-08-16", "end": "2026-08-22" },
+  "lastDay": { "day": "2026-08-22", "downloads": 4131699 },
+  "latestVersion": "0.9.12",
+  "downloadsByVersion": {
+    "0.8.13": 14530945,
+    "0.9.10": 9649123,
+    "0.8.11": 4885343,
+    "0.9.11": 3712578,
+    "0.8.14": 3711678,
+    "0.8.10": 3571926,
+    "0.7.13": 2601327,
+    "0.9.8": 1340239,
+    "0.8.12": 1005755,
+    "0.9.12": 340608,
+    "0.8.15": 290632,
+    "0.9.9": 234967
+  }
+}

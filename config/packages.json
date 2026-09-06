@@ -1,9 +1,15 @@
 {
   "packages": [
     {
-      "name": "modern-web-guidance",
-      "label": "Modern Web Guidance",
-      "group": "Chrome DevRel",
+      "name": "@xmldom/xmldom",
+      "label": "@xmldom/xmldom",
+      "group": "xmldom",
+      "important": true
+    },
+    {
+      "name": "xmldom",
+      "label": "xmldom",
+      "group": "xmldom",
       "important": true
     }
   ]

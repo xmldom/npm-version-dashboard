@@ -14,6 +14,11 @@ import {
 const kv = await Deno.openKv(Deno.env.get("DENO_KV_PATH"));
 await ensurePackages(kv, config.packages as PackageConfig[]);
 
+// ─── BEGIN drop-in backfill (safe to remove: delete this block, deno/backfill.ts, and backfill/) ───
+import { runBackfill } from "./deno/backfill.ts";
+await runBackfill(kv, config.packages as PackageConfig[]);
+// ─── END drop-in backfill ───
+
 Deno.cron(
   "collect npm version downloads",
   "17 4 * * *",
@@ -122,7 +127,7 @@ async function handleAdminCollect(request: Request): Promise<Response> {
   }
 }
 
-Deno.serve(async (request) => {
+Deno.serve({ port: Number(Deno.env.get("PORT")) || 8000 }, async (request) => {
   const url = new URL(request.url);
   if (url.pathname === "/healthz") {
     const [lastRun, globalStatus] = await Promise.all([
