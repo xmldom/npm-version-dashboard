@@ -14,7 +14,7 @@
     }
   },
   "deploy": {
-    "org": "paulkinlan-ea",
+    "org": "xmldom",
     "app": "npm-version-dashboard",
     "runtime": {
       "type": "dynamic",
